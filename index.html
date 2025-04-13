@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India States WebGIS</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>India States Dashboard</h1>
+            
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Search state...">
+                <button id="search-button">Search</button>
+            </div>
+            
+            <div class="stats">
+                <h2>Summary Statistics</h2>
+                <p>Total States: <span id="total-states">1</span></p>
+                
+                <h3>Random States</h3>
+                <ul id="random-states"></ul>
+            </div>
+            
+            <div class="search-result">
+                <h2>Search Result</h2>
+                <div id="state-info">
+                    <p>Select a state or search to see details</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
