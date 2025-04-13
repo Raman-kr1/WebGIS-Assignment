@@ -10,29 +10,24 @@
 <body>
     <div class="container">
         <div class="sidebar">
-            <h1>India States Dashboard</h1>
-            
+            <h1>India States</h1>
             <div class="search-container">
                 <input type="text" id="search-input" placeholder="Search state...">
-                <button id="search-button">Search</button>
+                <button id="search-btn">Search</button>
             </div>
-            
             <div class="stats">
-                <h2>Summary Statistics</h2>
-                <p>Total States: <span id="total-states">1</span></p>
-                
-                <h3>Random States</h3>
-                <ul id="random-states"></ul>
+                <h2>Statistics</h2>
+                <p>Total States: <span id="total-states">0</span></p>
             </div>
-            
+            <div class="random-states">
+                <h3>Random States</h3>
+                <ul id="random-states-list"></ul>
+            </div>
             <div class="search-result">
-                <h2>Search Result</h2>
-                <div id="state-info">
-                    <p>Select a state or search to see details</p>
-                </div>
+                <h3>Search Result</h3>
+                <div id="state-info"></div>
             </div>
         </div>
-        
         <div id="map"></div>
     </div>
 

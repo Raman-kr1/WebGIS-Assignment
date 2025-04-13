@@ -1,5 +1,5 @@
 // Initialize the map
-const map = L.map('map').setView([21.5937, 78.9629], 5);
+const map = L.map('map').setView([20.5937, 78.9629], 5);
 
 // Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -11,135 +11,128 @@ let statesLayer;
 let statesData = [];
 let statePopulation = {};
 
-// Fetch GeoJSON data
-fetch('data/india_states.geojson')
-    .then(response => response.json())
-    .then(data => {
-        statesData = data.features;
-        
-        // Generate random population data
-        statesData.forEach(state => {
-            const stateName = state.properties.NAME_1;
-            statePopulation[stateName] = Math.floor(Math.random() * 50000000) + 1000000;
-        });
-        
-        // Add states to map
-        statesLayer = L.geoJSON(data, {
-            style: {
-                fillColor: '#4CAF50',
-                weight: 1,
-                opacity: 1,
-                color: '#388E3C',
-                fillOpacity: 0.7
-            },
-            onEachFeature: onEachFeature
-        }).addTo(map);
-        
-        // Update UI with total states
-        document.getElementById('total-states').textContent = statesData.length;
-        
-        // Show 5 random states
-        showRandomStates();
-    })
-    .catch(error => console.error('Error loading GeoJSON:', error));
-
-// Function to handle each feature in GeoJSON
-function onEachFeature(feature, layer) {
-    const stateName = feature.properties.NAME_1;
-    
-    // Add popup with state name
-    layer.bindPopup(`<b>${stateName}</b>`);
-    
-    // Add click event to show state info in sidebar
-    layer.on('click', function() {
-        showStateInfo(stateName);
+// Function to generate random population data
+function generatePopulationData(features) {
+    const populationData = {};
+    features.forEach(feature => {
+        const stateName = feature.properties.NAME_1;
+        // Generate random population between 1M and 100M
+        populationData[stateName] = Math.floor(Math.random() * 99000000) + 1000000;
     });
+    return populationData;
 }
 
-// Function to show state info in sidebar
-function showStateInfo(stateName) {
-    const stateInfoDiv = document.getElementById('state-info');
-    stateInfoDiv.innerHTML = `
-        <p><strong>State:</strong> ${stateName}</p>
-        <p><strong>Population:</strong> ${statePopulation[stateName].toLocaleString()}</p>
-    `;
-    
-    // Highlight the state on the map
-    resetStateStyles();
-    highlightState(stateName);
-}
-
-// Function to highlight a state
-function highlightState(stateName) {
-    statesLayer.eachLayer(function(layer) {
-        if (layer.feature.properties.NAME_1 === stateName) {
-            layer.setStyle({
-                fillColor: '#FF5722',
-                fillOpacity: 0.7,
-                color: '#E64A19',
-                weight: 2
-            });
-        }
-    });
-}
-
-// Function to reset all state styles
-function resetStateStyles() {
-    statesLayer.setStyle({
-        fillColor: '#4CAF50',
-        weight: 1,
-        opacity: 1,
-        color: '#388E3C',
-        fillOpacity: 0.7
-    });
-}
-
-// Function to show 5 random states in sidebar
-function showRandomStates() {
-    const randomStatesList = document.getElementById('random-states');
+// Function to display random states
+function displayRandomStates(states, count = 5) {
+    const randomStatesList = document.getElementById('random-states-list');
     randomStatesList.innerHTML = '';
     
-    // Get 5 random states
-    const shuffled = [...statesData].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 5);
+    // Shuffle array and get first 'count' elements
+    const shuffled = [...states].sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, count);
     
-    // Add to list
     selected.forEach(state => {
-        const stateName = state.properties.NAME_1;
         const li = document.createElement('li');
-        li.innerHTML = `${stateName} <span class="population">(${statePopulation[stateName].toLocaleString()})</span>`;
-        li.addEventListener('click', () => showStateInfo(stateName));
+        li.textContent = `${state} - Population: ${statePopulation[state].toLocaleString()}`;
         randomStatesList.appendChild(li);
     });
 }
 
-// Search functionality
-document.getElementById('search-button').addEventListener('click', function() {
-    const searchInput = document.getElementById('search-input').value.trim();
-    if (!searchInput) return;
-    
-    // Find state (case insensitive)
-    const foundState = statesData.find(state => 
-        state.properties.NAME_1.toLowerCase().includes(searchInput.toLowerCase())
-    );
-    
-    if (foundState) {
-        const stateName = foundState.properties.NAME_1;
-        showStateInfo(stateName);
+// Function to highlight a state on the map
+function highlightState(stateName) {
+    statesLayer.resetStyle();
+    statesLayer.eachLayer(layer => {
+        if (layer.feature.properties.NAME_1 === stateName) {
+            layer.setStyle({
+                fillColor: 'red',
+                fillOpacity: 0.7,
+                weight: 2,
+                color: 'red'
+            });
+            
+            // Zoom to the state with some padding
+            map.fitBounds(layer.getBounds(), { padding: [50, 50] });
+            
+            // Display state info in sidebar
+            const stateInfo = document.getElementById('state-info');
+            stateInfo.innerHTML = `
+                <h4>${stateName}</h4>
+                <p>Population: ${statePopulation[stateName].toLocaleString()}</p>
+            `;
+        }
+    });
+}
+
+// Load GeoJSON data
+fetch('data/india_states.geojson')
+    .then(response => response.json())
+    .then(data => {
+        statesData = data.features;
+        statePopulation = generatePopulationData(statesData);
         
-        // Zoom to the state
-        const bounds = L.geoJSON(foundState).getBounds();
-        map.fitBounds(bounds);
-    } else {
-        document.getElementById('state-info').innerHTML = 
-            '<p>State not found. Please try another name.</p>';
-        resetStateStyles();
+        // Update total states count
+        document.getElementById('total-states').textContent = statesData.length;
+        
+        // Display random states
+        const stateNames = statesData.map(f => f.properties.NAME_1);
+        displayRandomStates(stateNames);
+        
+        // Add GeoJSON to map
+        statesLayer = L.geoJSON(data, {
+            style: {
+                fillColor: 'blue',
+                weight: 1,
+                opacity: 1,
+                color: 'white',
+                fillOpacity: 0.3
+            },
+            onEachFeature: function(feature, layer) {
+                const stateName = feature.properties.NAME_1;
+                layer.bindPopup(`<b>${stateName}</b><br>Population: ${statePopulation[stateName].toLocaleString()}`);
+                
+                layer.on({
+                    mouseover: function(e) {
+                        const layer = e.target;
+                        layer.setStyle({
+                            fillColor: 'green',
+                            fillOpacity: 0.7,
+                            weight: 2
+                        });
+                    },
+                    mouseout: function(e) {
+                        statesLayer.resetStyle();
+                    },
+                    click: function(e) {
+                        highlightState(stateName);
+                    }
+                });
+            }
+        }).addTo(map);
+        
+        // Fit map to India bounds
+        map.fitBounds(statesLayer.getBounds());
+    })
+    .catch(error => console.error('Error loading GeoJSON:', error));
+
+// Search functionality
+document.getElementById('search-btn').addEventListener('click', function() {
+    const searchInput = document.getElementById('search-input').value.trim();
+    if (searchInput) {
+        const foundState = statesData.find(f => 
+            f.properties.NAME_1.toLowerCase().includes(searchInput.toLowerCase())
+        );
+        
+        if (foundState) {
+            highlightState(foundState.properties.NAME_1);
+        } else {
+            alert('State not found!');
+        }
     }
 });
 
 // Allow search on Enter key
 document.getElementById('search-input').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
-        document.getElementById('search-button').click();
+        document.getElementById('search-btn').click();
     }
 });
