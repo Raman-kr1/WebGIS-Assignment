@@ -1,25 +1,24 @@
-// Keep these variables in global scope so we can reset styles after a search.
+// variables in global scope, for reset style after a search.
 let geojsonLayer = null;
 let highlightLayer = null;
 
-// Dictionary to store each state's layer: { 'punjab': LeafletLayer, 'bihar': LeafletLayer, ... }
+// Dictionary to store each state's layer
 const stateLayerMap = {};
 
-// Initialize the Leaflet map (center on India).
+// Leaflet map -center on India
 const map = L.map('map').setView([23.0, 82.0], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19,
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-/**
- * Populate a list of 5 random states in the sidebar, showing dummy populations.
- */
+
+// Random population of 5 state (dummy)
 function populateRandomStatesList(features) {
   const listEl = document.getElementById('randomStatesList');
   listEl.innerHTML = '';
 
-  // We assume the property is NAME_1 for each state's name. Adjust if yours is ST_NM, etc.
+  // property is NAME_1 for each state. Adjust if ST_NM , etc.
   const allStateNames = features.map(f => f.properties.NAME_1.trim());
   
   const sample = [];
@@ -31,7 +30,7 @@ function populateRandomStatesList(features) {
   }
 
   sample.forEach(name => {
-    // 'name' might be "Punjab"
+
     const layer = stateLayerMap[name.toLowerCase()];
     if (!layer) {
       console.warn("No layer found for random sample:", name);
@@ -44,29 +43,29 @@ function populateRandomStatesList(features) {
   });
 }
 
-// Load the India states GeoJSON from the 'data' folder
+// Loading the data of India states GeoJSON
 fetch('data/india_states.geojson')
   .then(resp => resp.json())
   .then(data => {
-    // Assign a dummy population for each state
+   
     data.features.forEach(feature => {
       feature.properties.population = Math.floor(Math.random() * (100_000_000 - 1_000_000 + 1)) + 1_000_000;
     });
 
-    // Create the Leaflet GeoJSON layer
+    // Creating the Leaflet GeoJSON layer
     geojsonLayer = L.geoJSON(data, {
       style: { color: '#3388ff', weight: 1, fillOpacity: 0.2 },
       onEachFeature: (feature, layer) => {
         // Debug: see all properties in the console
         console.log("Feature properties:", feature.properties);
 
-        // Attempt to use NAME_1 as the state name
+        // NAME_1 as the state name
         const rawName = feature.properties.NAME_1;
         if (rawName) {
-          const stateName = rawName.trim(); // remove extra spaces
+          const stateName = rawName.trim(); //  extra spaces triming
           layer.bindPopup(stateName);
 
-          // Store the layer under a lowercase key so searches are case-insensitive
+          
           stateLayerMap[stateName.toLowerCase()] = layer;
         } else {
           console.warn("No NAME_1 found for this feature:", feature);
@@ -74,16 +73,16 @@ fetch('data/india_states.geojson')
       }
     }).addTo(map);
 
-    // Fit the map to show all states
+    // set the map of all ststtes
     map.fitBounds(geojsonLayer.getBounds());
 
-    // Update sidebar: show total count
+    // Update sideba and show total cnt
     document.getElementById('totalStates').textContent = data.features.length;
 
-    // Populate 5 random states in the sidebar
+    // display rndm 5 state pop.
     populateRandomStatesList(data.features);
 
-    // Debug: check which keys we have in the dictionary
+    // Debug: check for which keys is in the dictionary
     console.log("stateLayerMap keys:", Object.keys(stateLayerMap));
   })
   .catch(err => console.error("Error loading GeoJSON data:", err));
@@ -96,34 +95,34 @@ const searchResult = document.getElementById('searchResult');
 searchForm.addEventListener('submit', event => {
   event.preventDefault();
 
-  // Grab the search text, e.g. "punjab"
+  
   const query = searchInput.value.trim().toLowerCase();
   if (!query) return;
 
-  // Reset previously highlighted state
+  // Reset old search
   if (highlightLayer && geojsonLayer) {
     geojsonLayer.resetStyle(highlightLayer);
     map.closePopup();
     highlightLayer = null;
   }
 
-  // Look up the layer in our dictionary
+  
   const layer = stateLayerMap[query];
   if (layer) {
-    // Highlight style
+    
     layer.setStyle({ color: 'yellow', weight: 3 });
-    layer.openPopup(); // show the name popup
+    layer.openPopup(); 
     highlightLayer = layer;
 
-    // Zoom to the selected state's bounds
+  
     map.fitBounds(layer.getBounds());
 
-    // Update sidebar with the state's info
+    //  sidebar updatewd
     const rawName = layer.feature.properties.NAME_1.trim();
     const pop = layer.feature.properties.population;
     searchResult.textContent = `${rawName} – Population: ${pop.toLocaleString()}`;
   } else {
-    // No match
+    
     searchResult.textContent = "State not found. Please check the name and try again.";
   }
 });
