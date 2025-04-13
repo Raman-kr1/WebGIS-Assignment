@@ -1,138 +1,129 @@
-// Initialize the map
-const map = L.map('map').setView([20.5937, 78.9629], 5);
+// Keep these variables in global scope so we can reset styles after a search.
+let geojsonLayer = null;
+let highlightLayer = null;
 
-// Add OpenStreetMap tiles
+// Dictionary to store each state's layer: { 'punjab': LeafletLayer, 'bihar': LeafletLayer, ... }
+const stateLayerMap = {};
+
+// Initialize the Leaflet map (center on India).
+const map = L.map('map').setView([23.0, 82.0], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  maxZoom: 19,
+  attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Variables to store GeoJSON layer and state data
-let statesLayer;
-let statesData = [];
-let statePopulation = {};
+/**
+ * Populate a list of 5 random states in the sidebar, showing dummy populations.
+ */
+function populateRandomStatesList(features) {
+  const listEl = document.getElementById('randomStatesList');
+  listEl.innerHTML = '';
 
-// Function to generate random population data
-function generatePopulationData(features) {
-    const populationData = {};
-    features.forEach(feature => {
-        const stateName = feature.properties.NAME_1;
-        // Generate random population between 1M and 100M
-        populationData[stateName] = Math.floor(Math.random() * 99000000) + 1000000;
-    });
-    return populationData;
+  // We assume the property is NAME_1 for each state's name. Adjust if yours is ST_NM, etc.
+  const allStateNames = features.map(f => f.properties.NAME_1.trim());
+  
+  const sample = [];
+  const count = Math.min(5, allStateNames.length);
+  for (let i = 0; i < count; i++) {
+    const randIdx = Math.floor(Math.random() * allStateNames.length);
+    const picked = allStateNames.splice(randIdx, 1)[0];
+    sample.push(picked);
+  }
+
+  sample.forEach(name => {
+    // 'name' might be "Punjab"
+    const layer = stateLayerMap[name.toLowerCase()];
+    if (!layer) {
+      console.warn("No layer found for random sample:", name);
+      return;
+    }
+    const pop = layer.feature.properties.population;
+    const li = document.createElement('li');
+    li.textContent = `${name} – Pop. ${pop.toLocaleString()}`;
+    listEl.appendChild(li);
+  });
 }
 
-// Function to display random states
-function displayRandomStates(states, count = 5) {
-    const randomStatesList = document.getElementById('random-states-list');
-    randomStatesList.innerHTML = '';
-    
-    // Shuffle array and get first 'count' elements
-    const shuffled = [...states].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, count);
-    
-    selected.forEach(state => {
-        const li = document.createElement('li');
-        li.textContent = `${state} - Population: ${statePopulation[state].toLocaleString()}`;
-        randomStatesList.appendChild(li);
-    });
-}
-
-// Function to highlight a state on the map
-function highlightState(stateName) {
-    statesLayer.resetStyle();
-    statesLayer.eachLayer(layer => {
-        if (layer.feature.properties.NAME_1 === stateName) {
-            layer.setStyle({
-                fillColor: 'red',
-                fillOpacity: 0.7,
-                weight: 2,
-                color: 'red'
-            });
-            
-            // Zoom to the state with some padding
-            map.fitBounds(layer.getBounds(), { padding: [50, 50] });
-            
-            // Display state info in sidebar
-            const stateInfo = document.getElementById('state-info');
-            stateInfo.innerHTML = `
-                <h4>${stateName}</h4>
-                <p>Population: ${statePopulation[stateName].toLocaleString()}</p>
-            `;
-        }
-    });
-}
-
-// Load GeoJSON data
+// Load the India states GeoJSON from the 'data' folder
 fetch('data/india_states.geojson')
-    .then(response => response.json())
-    .then(data => {
-        statesData = data.features;
-        statePopulation = generatePopulationData(statesData);
-        
-        // Update total states count
-        document.getElementById('total-states').textContent = statesData.length;
-        
-        // Display random states
-        const stateNames = statesData.map(f => f.properties.NAME_1);
-        displayRandomStates(stateNames);
-        
-        // Add GeoJSON to map
-        statesLayer = L.geoJSON(data, {
-            style: {
-                fillColor: 'blue',
-                weight: 1,
-                opacity: 1,
-                color: 'white',
-                fillOpacity: 0.3
-            },
-            onEachFeature: function(feature, layer) {
-                const stateName = feature.properties.NAME_1;
-                layer.bindPopup(`<b>${stateName}</b><br>Population: ${statePopulation[stateName].toLocaleString()}`);
-                
-                layer.on({
-                    mouseover: function(e) {
-                        const layer = e.target;
-                        layer.setStyle({
-                            fillColor: 'green',
-                            fillOpacity: 0.7,
-                            weight: 2
-                        });
-                    },
-                    mouseout: function(e) {
-                        statesLayer.resetStyle();
-                    },
-                    click: function(e) {
-                        highlightState(stateName);
-                    }
-                });
-            }
-        }).addTo(map);
-        
-        // Fit map to India bounds
-        map.fitBounds(statesLayer.getBounds());
-    })
-    .catch(error => console.error('Error loading GeoJSON:', error));
+  .then(resp => resp.json())
+  .then(data => {
+    // Assign a dummy population for each state
+    data.features.forEach(feature => {
+      feature.properties.population = Math.floor(Math.random() * (100_000_000 - 1_000_000 + 1)) + 1_000_000;
+    });
+
+    // Create the Leaflet GeoJSON layer
+    geojsonLayer = L.geoJSON(data, {
+      style: { color: '#3388ff', weight: 1, fillOpacity: 0.2 },
+      onEachFeature: (feature, layer) => {
+        // Debug: see all properties in the console
+        console.log("Feature properties:", feature.properties);
+
+        // Attempt to use NAME_1 as the state name
+        const rawName = feature.properties.NAME_1;
+        if (rawName) {
+          const stateName = rawName.trim(); // remove extra spaces
+          layer.bindPopup(stateName);
+
+          // Store the layer under a lowercase key so searches are case-insensitive
+          stateLayerMap[stateName.toLowerCase()] = layer;
+        } else {
+          console.warn("No NAME_1 found for this feature:", feature);
+        }
+      }
+    }).addTo(map);
+
+    // Fit the map to show all states
+    map.fitBounds(geojsonLayer.getBounds());
+
+    // Update sidebar: show total count
+    document.getElementById('totalStates').textContent = data.features.length;
+
+    // Populate 5 random states in the sidebar
+    populateRandomStatesList(data.features);
+
+    // Debug: check which keys we have in the dictionary
+    console.log("stateLayerMap keys:", Object.keys(stateLayerMap));
+  })
+  .catch(err => console.error("Error loading GeoJSON data:", err));
 
 // Search functionality
-document.getElementById('search-btn').addEventListener('click', function() {
-    const searchInput = document.getElementById('search-input').value.trim();
-    if (searchInput) {
-        const foundState = statesData.find(f => 
-            f.properties.NAME_1.toLowerCase().includes(searchInput.toLowerCase())
-        );
-        
-        if (foundState) {
-            highlightState(foundState.properties.NAME_1);
-        } else {
-            alert('State not found!');
-        }
-    }
-});
+const searchForm = document.getElementById('searchForm');
+const searchInput = document.getElementById('searchInput');
+const searchResult = document.getElementById('searchResult');
 
-// Allow search on Enter key
-document.getElementById('search-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        document.getElementById('search-btn').click();
-    }
+searchForm.addEventListener('submit', event => {
+  event.preventDefault();
+
+  // Grab the search text, e.g. "punjab"
+  const query = searchInput.value.trim().toLowerCase();
+  if (!query) return;
+
+  // Reset previously highlighted state
+  if (highlightLayer && geojsonLayer) {
+    geojsonLayer.resetStyle(highlightLayer);
+    map.closePopup();
+    highlightLayer = null;
+  }
+
+  // Look up the layer in our dictionary
+  const layer = stateLayerMap[query];
+  if (layer) {
+    // Highlight style
+    layer.setStyle({ color: 'yellow', weight: 3 });
+    layer.openPopup(); // show the name popup
+    highlightLayer = layer;
+
+    // Zoom to the selected state's bounds
+    map.fitBounds(layer.getBounds());
+
+    // Update sidebar with the state's info
+    const rawName = layer.feature.properties.NAME_1.trim();
+    const pop = layer.feature.properties.population;
+    searchResult.textContent = `${rawName} – Population: ${pop.toLocaleString()}`;
+  } else {
+    // No match
+    searchResult.textContent = "State not found. Please check the name and try again.";
+  }
 });
