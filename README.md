@@ -1,4 +1,4 @@
-# Indian States WebGIS Dashboard
+# Build an interactive map to visualize Indian State Data
 An interactive WebGIS dashboard to visualize Indian state boundaries using GeoJSON and TailwindCSS.
 
 🔗 Live Repository: github.com/Raman-kr1/WebGIS-Assignment
