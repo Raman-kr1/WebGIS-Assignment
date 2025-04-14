@@ -32,6 +32,9 @@ Run via - vscode Live server or `python3 -m http.server 8000`
 
 
 - Leaflet.js, OpenStreetMap Tiles, Tailwind CSS, GeoJSON
+## Short Summary of Approach
+
+- The project was developed by first setting up a modular folder structure with separate HTML, CSS, and JavaScript files. I implemented the map using Leaflet.js and loaded a GeoJSON file containing Indian state boundaries, binding popups to each state. I created a responsive sidebar with Tailwind CSS to display overall statistics and a random sample of states. Finally, I implemented a search function that normalizes user input, locates the corresponding state from a globally stored dictionary, highlights it on the map, and displays detailed information in the sidebar.
 
 ## What I Learned
 
@@ -49,6 +52,7 @@ Through this project, I encountered common issues such as CORS errors, property 
 
 - **Local Server Requirement:**  
 I gained an understanding of why running a project on a local server (rather than directly opening HTML files) is necessary due to browser CORS policies and how to set up a simple local server using tools like VS Code’s Live Server or Python’s HTTP server.
+
 
 ## Contact
 Have any suggestions or feedback?
